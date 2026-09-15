@@ -1,0 +1,6 @@
+{
+  "name": "Online Library Management System",
+  "description": "A comprehensive digital library management system for books cataloging, issue and return workflows, member tracking, reservations, fine calculation, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
