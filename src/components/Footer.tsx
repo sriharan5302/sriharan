@@ -3,7 +3,7 @@ import { useLibrary } from '../context/LibraryContext';
 import { BookOpen, Shield, Code, Database, Heart } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setCurrentPage, settings, books, members } = useLibrary();
+  const { setCurrentPage, settings, books, members, openDocsTab } = useLibrary();
 
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 mt-auto">
@@ -96,6 +96,15 @@ export const Footer: React.FC = () => {
               </li>
               <li className="text-slate-500 pt-1">
                 Automatic overdue fine calculator (${settings.finePerDay.toFixed(2)}/day), max {settings.maxBorrowDays} day loan period.
+              </li>
+              <li className="pt-2">
+                <button
+                  onClick={() => openDocsTab('report')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                >
+                  <span>Review Report, Unit Tests & Specs</span>
+                  <span>&rarr;</span>
+                </button>
               </li>
             </ul>
           </div>

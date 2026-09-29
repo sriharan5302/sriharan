@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Book, Member, Transaction, Reservation, NotificationItem, SystemSettings, UserRole } from '../types';
 import { initialBooks, initialMembers, initialTransactions, initialReservations, initialNotifications, initialSettings } from '../data/sampleData';
+import { calculateOverdueDays, calculateFine } from '../utils/libraryCalculations';
 
 export type PageId =
   | 'home'
@@ -14,6 +15,8 @@ export type PageId =
   | 'member-management'
   | 'reports'
   | 'notifications';
+
+export type DocsTab = 'report' | 'tests' | 'error-boundaries' | 'db-schema' | 'api-docs';
 
 interface ToastInfo {
   id: string;
@@ -31,6 +34,12 @@ interface LibraryContextType {
   login: (emailOrId: string, role: UserRole) => boolean;
   logout: () => void;
   switchRoleQuick: (role: UserRole) => void;
+  
+  // Technical Docs & Evaluation Review Modal
+  isDocsOpen: boolean;
+  setIsDocsOpen: (open: boolean) => void;
+  docsInitialTab: DocsTab;
+  openDocsTab: (tab?: DocsTab) => void;
   
   // Data
   books: Book[];
@@ -116,6 +125,14 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     return initialMembers[0]; // Admin by default
   });
 
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [docsInitialTab, setDocsInitialTab] = useState<DocsTab>('report');
+
+  const openDocsTab = (tab: DocsTab = 'report') => {
+    setDocsInitialTab(tab);
+    setIsDocsOpen(true);
+  };
+
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
@@ -163,19 +180,14 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [currentUser]);
 
-  // Recalculate fines on mount & whenever transactions change
+  // Recalculate fines on mount & whenever transactions or rate change
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     setTransactions(prevTxns =>
       prevTxns.map(tx => {
         if (tx.status === 'returned') return tx;
-        const due = new Date(tx.dueDate);
-        due.setHours(0, 0, 0, 0);
-        const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays > 0) {
-          const fine = Number((diffDays * settings.finePerDay).toFixed(2));
+        const overdueDays = calculateOverdueDays(tx.dueDate);
+        if (overdueDays > 0) {
+          const fine = calculateFine(overdueDays, settings.finePerDay);
           return { ...tx, fine, status: 'overdue' as const };
         }
         return { ...tx, status: 'active' as const };
@@ -403,14 +415,9 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, message: 'Transaction already returned or invalid.', fine: 0 };
     }
 
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const due = new Date(txn.dueDate);
-    today.setHours(0, 0, 0, 0);
-    due.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
-    const calculatedFine = diffDays > 0 ? Number((diffDays * settings.finePerDay).toFixed(2)) : 0;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdueDays = calculateOverdueDays(txn.dueDate, todayStr);
+    const calculatedFine = calculateFine(overdueDays, settings.finePerDay);
 
     // Update transaction
     setTransactions(prev =>
@@ -614,6 +621,10 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         login,
         logout,
         switchRoleQuick,
+        isDocsOpen,
+        setIsDocsOpen,
+        docsInitialTab,
+        openDocsTab,
         books,
         members,
         transactions,
